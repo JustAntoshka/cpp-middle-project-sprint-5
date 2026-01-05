@@ -79,7 +79,11 @@ std::optional<int> RequireIntegerAtLeast(double d, int min_value) {
         return Circle{{v[0], v[1]}, v[2]};
 */
 std::optional<Shape> MakeCircle(const std::vector<double>& v) {
-    //Ваш код здесь
+    return RequireSize(v, 3).and_then([](const auto& vals){
+        return RequirePositive(vals[2]).transform([&vals](auto radius){
+            return Circle{{vals[0], vals[1]}, radius};
+        });
+    });
 }
 
 /**
@@ -89,7 +93,9 @@ std::optional<Shape> MakeCircle(const std::vector<double>& v) {
         return Line{{v[0], v[1]}, {v[2], v[3]}};
 */
 std::optional<Shape> MakeLine(const std::vector<double>& v) {
-    //Ваш код здесь
+    return RequireSize(v, 4).transform([](const auto& vals){
+        return Line{{vals[0], vals[1]}, {vals[2], vals[3]}};
+    });
 }
 
 /**
@@ -99,7 +105,9 @@ std::optional<Shape> MakeLine(const std::vector<double>& v) {
         return Triangle{{v[0], v[1]}, {v[2], v[3]}, {v[4], v[5]}};
 */
 std::optional<Shape> MakeTriangle(const std::vector<double>& v) {
-    //Ваш код здесь
+    return RequireSize(v, 6).transform([](const auto& vals){
+        return Triangle{{vals[0], vals[1]}, {vals[2], vals[3]}, {vals[4], vals[5]}};
+    });
 }
 
 /**
@@ -110,7 +118,13 @@ std::optional<Shape> MakeTriangle(const std::vector<double>& v) {
         return Rectangle{{v[0], v[1]}, v[2], v[3]};
 */
 std::optional<Shape> MakeRectangle(const std::vector<double>& v) {
-    //Ваш код здесь
+    return RequireSize(v, 4).and_then([](const auto& vals){
+        return RequirePositive(vals[2]).and_then([&vals](auto width){
+            return RequirePositive(vals[3]).transform([&vals, &width](auto height){
+                return Rectangle{{vals[0], vals[1]}, width, height};
+            });
+        });
+    });
 }
 
 /**
@@ -125,7 +139,13 @@ std::optional<Shape> MakeRectangle(const std::vector<double>& v) {
         return RegularPolygon{{v[0], v[1]}, v[2], sides};
 */
 std::optional<Shape> MakePolygon(const std::vector<double>& v) {
-    //Ваш код здесь
+    return RequireSize(v, 4).and_then([](const auto& vals){
+        return RequirePositive(vals[2]).and_then([&vals](auto radius){
+            return RequireIntegerAtLeast(vals[3], 3).transform([&vals, radius](auto sides){
+                return RegularPolygon{{vals[0], vals[1]}, radius, sides};
+            });
+        });
+    });
 }
 
 // Парсинг одной фигуры
