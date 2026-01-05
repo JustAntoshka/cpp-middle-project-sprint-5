@@ -1,4 +1,5 @@
 #include "shape_utils.hpp"
+#include "queries.hpp"
 #include <functional>
 
 namespace geometry::utils {
@@ -187,25 +188,30 @@ std::vector<Shape> ParseShapes(std::string_view input) {
 }
 
 std::vector<std::pair<Shape, Shape>> FindAllCollisions(std::span<const Shape> shapes) {
+    const auto Size = shapes.size();
+
     std::vector<std::pair<Shape, Shape>> collisions;
+    collisions.reserve(Size * (Size - 1));
 
-    /*
-     * Используйте библиотеку ranges, чтобы найти все коллизии между фигурами методом BoundingBoxesOverlap
-     *
-     * Также используйте наиболее эффективный метод добавления объектов в collisions
-     */
+    auto transformer = [&](size_t i){ return std::views::iota(i + 1, Size)
+        | std::views::filter([&](size_t j){ return geometry::queries::BoundingBoxesOverlap(shapes[i], shapes[j]); })
+        | std::views::transform([&](size_t j){ return std::pair{shapes[i], shapes[j]}; });
+    };
 
+    auto collisions_view = std::views::iota(std::size_t{0}, Size)
+        | std::views::transform(transformer)
+        | std::views::join;
+
+    std::ranges::copy(collisions_view, std::back_inserter(collisions));
+    collisions.shrink_to_fit();
     return collisions;
 }
 
 std::optional<size_t> FindHighestShape(std::span<const Shape> shapes) {
+    auto heights = shapes | std::views::transform(geometry::queries::GetHeight);
 
-    /*
-     * Используйте библиотеку ranges, чтобы найти самую высокую фигуру
-     *
-     * Важно: использование ручной итерации по фигурам не разрешается
-     */
+    auto max_element = std::ranges::max_element(heights);
 
-    return std::nullopt;
+    return max_element != heights.end() ? std::optional{*max_element} : std::nullopt;
 }
 }
