@@ -21,8 +21,8 @@ struct Point2D {
     constexpr Point2D(double x, double y) : x(x), y(y) {}
 
     // Comparison
-    bool operator<(const Point2D &other) { return x < other.x && y < other.y; }
-    bool operator==(const Point2D &other) {
+    bool operator<(const Point2D &other) const { return x < other.x && y < other.y; }
+    bool operator==(const Point2D &other) const {
         return x == other.x && y == other.y;
     }
 
