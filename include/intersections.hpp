@@ -33,7 +33,7 @@ public:
 };
 
 inline std::optional<Point2D> GetIntersectPoint(const Shape &shape1, const Shape &shape2) {
-    return std::visit(Multilambda{IntersectionVisitor{}}, shape1, shape2);
+    return std::visit(IntersectionVisitor{}, shape1, shape2);
 }
 
 
@@ -46,25 +46,23 @@ bool isPointInSegment(const Point2D& point, const Line& line) {
 
 std::vector<Point2D> getLineAndCircleIntersect(double A, double B, double C, double r) {
     // Nearest point of line to circle center (0, 0)
-    auto x = - (A * C) / (A * A + B * B);
-    auto y = - (B * C) / (A * A + B * B);
-    auto dist_to_line = std::abs(C) / std::sqrt(A * A + B * B);
+    auto a_sqr_b_sqr = A * A + B * B;
+    auto x = - (A * C) / (a_sqr_b_sqr);
+    auto y = - (B * C) / (a_sqr_b_sqr);
+    auto dist_to_line_sqr = (C * C) / (a_sqr_b_sqr);
 
-    if(dist_to_line > r) {
+    auto d = r * r - dist_to_line_sqr;
+    if(d < 0) {
         return {};
     }
+    
+    auto delta_x = std::sqrt( (d * B * B) / (a_sqr_b_sqr) );
+    auto delta_y = std::sqrt( (d * A * A) / (a_sqr_b_sqr) );
 
-    // Distance from nearest point to intersection with circle
-    auto d = std::sqrt((r * r - dist_to_line * dist_to_line));
+    Point2D intersection1 = {x + delta_x, y + delta_y};
+    Point2D intersection2 = {x - delta_x, y - delta_y};
 
-    if(d == 0) {
-        return {{x, y}};
-    }
-
-    Point2D intersection1 = {x + B * d, y - A * d};
-    Point2D intersection2 = {x - B * d, y + A * d};
-
-    return {intersection1, intersection2};    
+    return {intersection1, intersection2}; // Maybe equal
 }
 
 std::optional<Point2D> IntersectionVisitor::operator()(const Line& line1, const Line& line2) {
@@ -117,17 +115,17 @@ std::optional<Point2D> IntersectionVisitor::operator()(const Line& line, const C
     auto x1 = line.start.x, y1 = line.start.y;
     auto x2 = line.end.x, y2 = line.end.y;
     auto r = circle.radius;
-
+    
     // Ax + By + C = 0
     auto A = y1 - y2;
     auto B = x2 - x1;
     auto C = x1 * y2 - x2 * y1;
-    
+
     // Ax' + By' + C' = 0
     auto C_prime = A * x0 + B * y0 + C;
-
+    
     auto points = getLineAndCircleIntersect(A, B, C_prime, r);
-
+    
     std::for_each(points.begin(), points.end(), [&circle](auto& p){ p = p + circle.center_p; });
 
     for(const auto& p : points) {
