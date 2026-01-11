@@ -210,21 +210,17 @@ std::vector<Shape> ParseShapes(std::string_view input) {
 std::vector<std::pair<Shape, Shape>> FindAllCollisions(std::span<const Shape> shapes) {
     const auto Size = shapes.size();
 
-    std::vector<std::pair<Shape, Shape>> collisions;
-    collisions.reserve(Size * (Size - 1));
-
-    auto transformer = [&](size_t i){ return std::views::iota(i + 1, Size)
-        | std::views::filter([&](size_t j){ return geometry::queries::BoundingBoxesOverlap(shapes[i], shapes[j]); })
-        | std::views::transform([&](size_t j){ return std::pair{shapes[i], shapes[j]}; });
-    };
-
-    auto collisions_view = std::views::iota(std::size_t{0}, Size)
-        | std::views::transform(transformer)
-        | std::views::join;
-
-    std::ranges::copy(collisions_view, std::back_inserter(collisions));
-    collisions.shrink_to_fit();
-    return collisions;
+    auto idx_pairs = std::views::iota(std::size_t{0}, Size)
+    | std::views::transform([&](size_t i) { return std::views::iota(i + 1, Size)
+        | std::views::transform([&](size_t j){ return std::pair{i, j}; });
+    })
+    | std::views::join
+    | std::ranges::to<std::vector<std::pair<std::size_t, std::size_t>>>();
+    
+    return idx_pairs
+    | std::views::filter([&shapes](const auto& idx_pair){ return geometry::queries::BoundingBoxesOverlap(shapes[idx_pair.first], shapes[idx_pair.second]); })
+    | std::views::transform([&shapes](const auto& idx_pair){ return std::pair{shapes[idx_pair.first], shapes[idx_pair.second]}; })
+    | std::ranges::to<std::vector<std::pair<Shape, Shape>>>();
 }
 
 std::optional<size_t> FindHighestShape(std::span<const Shape> shapes) {
