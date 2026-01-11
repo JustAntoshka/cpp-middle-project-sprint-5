@@ -1,4 +1,5 @@
 #include "shape_utils.hpp"
+#include "queries.hpp"
 #include <functional>
 
 namespace geometry::utils {
@@ -78,7 +79,11 @@ std::optional<int> RequireIntegerAtLeast(double d, int min_value) {
         return Circle{{v[0], v[1]}, v[2]};
 */
 std::optional<Shape> MakeCircle(const std::vector<double>& v) {
-    //Ваш код здесь
+    return RequireSize(v, 3).and_then([](const auto& vals){
+        return RequirePositive(vals[2]).transform([&vals](auto radius){
+            return Circle{{vals[0], vals[1]}, radius};
+        });
+    });
 }
 
 /**
@@ -88,7 +93,9 @@ std::optional<Shape> MakeCircle(const std::vector<double>& v) {
         return Line{{v[0], v[1]}, {v[2], v[3]}};
 */
 std::optional<Shape> MakeLine(const std::vector<double>& v) {
-    //Ваш код здесь
+    return RequireSize(v, 4).transform([](const auto& vals){
+        return Line{{vals[0], vals[1]}, {vals[2], vals[3]}};
+    });
 }
 
 /**
@@ -98,7 +105,9 @@ std::optional<Shape> MakeLine(const std::vector<double>& v) {
         return Triangle{{v[0], v[1]}, {v[2], v[3]}, {v[4], v[5]}};
 */
 std::optional<Shape> MakeTriangle(const std::vector<double>& v) {
-    //Ваш код здесь
+    return RequireSize(v, 6).transform([](const auto& vals){
+        return Triangle{{vals[0], vals[1]}, {vals[2], vals[3]}, {vals[4], vals[5]}};
+    });
 }
 
 /**
@@ -109,7 +118,13 @@ std::optional<Shape> MakeTriangle(const std::vector<double>& v) {
         return Rectangle{{v[0], v[1]}, v[2], v[3]};
 */
 std::optional<Shape> MakeRectangle(const std::vector<double>& v) {
-    //Ваш код здесь
+    return RequireSize(v, 4).and_then([](const auto& vals){
+        return RequirePositive(vals[2]).and_then([&vals](auto width){
+            return RequirePositive(vals[3]).transform([&vals, &width](auto height){
+                return Rectangle{{vals[0], vals[1]}, width, height};
+            });
+        });
+    });
 }
 
 /**
@@ -124,7 +139,13 @@ std::optional<Shape> MakeRectangle(const std::vector<double>& v) {
         return RegularPolygon{{v[0], v[1]}, v[2], sides};
 */
 std::optional<Shape> MakePolygon(const std::vector<double>& v) {
-    //Ваш код здесь
+    return RequireSize(v, 4).and_then([](const auto& vals){
+        return RequirePositive(vals[2]).and_then([&vals](auto radius){
+            return RequireIntegerAtLeast(vals[3], 3).transform([&vals, radius](auto sides){
+                return RegularPolygon{{vals[0], vals[1]}, radius, sides};
+            });
+        });
+    });
 }
 
 // Парсинг одной фигуры
@@ -187,25 +208,26 @@ std::vector<Shape> ParseShapes(std::string_view input) {
 }
 
 std::vector<std::pair<Shape, Shape>> FindAllCollisions(std::span<const Shape> shapes) {
-    std::vector<std::pair<Shape, Shape>> collisions;
+    const auto Size = shapes.size();
 
-    /*
-     * Используйте библиотеку ranges, чтобы найти все коллизии между фигурами методом BoundingBoxesOverlap
-     *
-     * Также используйте наиболее эффективный метод добавления объектов в collisions
-     */
-
-    return collisions;
+    auto idx_pairs = std::views::iota(std::size_t{0}, Size)
+    | std::views::transform([&](size_t i) { return std::views::iota(i + 1, Size)
+        | std::views::transform([&](size_t j){ return std::pair{i, j}; });
+    })
+    | std::views::join
+    | std::ranges::to<std::vector<std::pair<std::size_t, std::size_t>>>();
+    
+    return idx_pairs
+    | std::views::filter([&shapes](const auto& idx_pair){ return geometry::queries::BoundingBoxesOverlap(shapes[idx_pair.first], shapes[idx_pair.second]); })
+    | std::views::transform([&shapes](const auto& idx_pair){ return std::pair{shapes[idx_pair.first], shapes[idx_pair.second]}; })
+    | std::ranges::to<std::vector<std::pair<Shape, Shape>>>();
 }
 
 std::optional<size_t> FindHighestShape(std::span<const Shape> shapes) {
+    auto heights = shapes | std::views::transform(geometry::queries::GetHeight);
 
-    /*
-     * Используйте библиотеку ranges, чтобы найти самую высокую фигуру
-     *
-     * Важно: использование ручной итерации по фигурам не разрешается
-     */
+    auto max_element = std::ranges::max_element(heights);
 
-    return std::nullopt;
+    return max_element != heights.end() ? std::optional{*max_element} : std::nullopt;
 }
 }

@@ -49,7 +49,15 @@ void Draw(std::span<geometry::Shape> shapes) {
          * 
          */
 
-        //ваш код тут
+        std::visit(Multilambda{
+            [&](const Line& s){ auto lines = s.Lines(); plot(lines.x, lines.y)->line_width(2).color("yellow"); },
+            [&](const Triangle& s){ auto lines = s.Lines(); plot(lines.x, lines.y)->line_width(2).color("blue"); },
+            [&](const Rectangle& s){ auto lines = s.Lines(); plot(lines.x, lines.y)->line_width(2).color("green"); },
+            [&](const RegularPolygon& s){ auto lines = s.Lines(); plot(lines.x, lines.y)->line_width(2).color("magenta"); },
+            [&](const Circle& s){ auto lines = s.Lines(); plot(lines.x, lines.y)->line_width(2).color("red"); },
+            [&](const Polygon& s){ auto lines = s.Lines(); plot(lines.x, lines.y)->line_width(2).color("cyan"); }
+        }, shape);
+
         // Add shape number
         const auto center = shape.visit([](auto &&s) { return s.Center(); });
         auto t = text(center.x, center.y, std::to_string(index));
